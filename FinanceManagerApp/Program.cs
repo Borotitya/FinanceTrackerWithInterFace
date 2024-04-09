@@ -126,8 +126,132 @@ namespace FinanceTrackerWithInterface
         private void InitializeComponent()
         {
             Text = "Отслеживание финансов";
+            Size = new System.Drawing.Size(400, 400);
+
+            // Создание и настройка элементов управления
+
+            // ComboBox для выбора категории транзакции
+            categoryComboBox = new ComboBox
+            {
+                Location = new System.Drawing.Point(10, 10),
+                Size = new System.Drawing.Size(200, 25),
+                DropDownStyle = ComboBoxStyle.DropDownList // чтобы пользователь мог выбирать только из списка
+            };
+            // Добавление категорий по умолчанию
+            categoryComboBox.Items.AddRange(new string[] { "Развлечения", "Еда", "Транспорт", "Одежда", "Жилье", "Здоровье", "Образование", "Прочее" });
+            Controls.Add(categoryComboBox);
+
+            // TextBox для ввода суммы транзакции
+            amountTextBox = new TextBox
+            {
+                Location = new System.Drawing.Point(10, 45),
+                Size = new System.Drawing.Size(200, 25)
+            };
+            Controls.Add(amountTextBox);
+
+            // TextBox для ввода заработка
+            incomeTextBox = new TextBox
+            {
+                Location = new System.Drawing.Point(10, 80),
+                Size = new System.Drawing.Size(200, 25),
+                Text = "Введите ваш заработок"
+            };
+            incomeTextBox.Enter += IncomeTextBox_Enter; // Добавляем обработчик события входа в текстовое поле
+            incomeTextBox.Leave += IncomeTextBox_Leave; // Добавляем обработчик события выхода из текстового поля
+            Controls.Add(incomeTextBox);
+
+            // Button для добавления транзакции
+            addTransactionButton = new Button
+            {
+                Location = new System.Drawing.Point(10, 120),
+                Size = new System.Drawing.Size(200, 25),
+                Text = "Добавить транзакцию"
+            };
+            addTransactionButton.Click += AddTransactionButton_Click; // добавляем обработчик события нажатия кнопки
+            Controls.Add(addTransactionButton);
+
+            // ListBox для отображения списка транзакций
+            transactionListBox = new ListBox
+            {
+                Location = new System.Drawing.Point(10, 160),
+                Size = new System.Drawing.Size(350, 200)
+            };
+            Controls.Add(transactionListBox);
+
+            // Label для отображения общей суммы потраченных денег
+            totalLabel = new Label
+            {
+                Location = new System.Drawing.Point(10, 370),
+                Size = new System.Drawing.Size(350, 20),
+                Text = $"Общая сумма потраченных денег: {financeTracker.calculateTotal()}",
+                TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+            };
+            Controls.Add(totalLabel);
+        }
+
+        private void AddTransactionButton_Click(object sender, EventArgs e)
+        {
+            // Обработчик события нажатия кнопки "Добавить транзакцию"
+
+            // Получаем выбранную категорию и введенную сумму
+            string category = categoryComboBox.SelectedItem.ToString();
+            double amount = 0;
+            if (!double.TryParse(amountTextBox.Text, out amount))
+            {
+                MessageBox.Show("Пожалуйста, введите корректную сумму.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            // Получаем введенный заработок
+            double income = 0;
+            if (!double.TryParse(incomeTextBox.Text, out income))
+            {
+                MessageBox.Show("Пожалуйста, введите корректный заработок.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            financeTracker.setIncome(income); // Установить введенный заработок
+
+            // Добавляем транзакцию
+            financeTracker.addTransaction(category, amount);
+
+            // Обновляем список транзакций и общую сумму потраченных денег
+            UpdateTransactionsListBox();
+            totalLabel.Text = $"Общая сумма потраченных денег: {financeTracker.calculateTotal()}";
+        }
+
+        private void UpdateTransactionsListBox()
+        {
+            // Очищаем список транзакций и добавляем новые элементы
+            transactionListBox.Items.Clear();
+            foreach (var transaction in financeTracker.getTransactions())
+            {
+                transactionListBox.Items.Add($"Категория: {transaction.Category}, Сумма: {transaction.Amount}");
+            }
+        }
+
+        private void IncomeTextBox_Enter(object sender, EventArgs e)
+        {
+            // Обработчик события входа в текстовое поле "Заработок"
+
+            if (incomeTextBox.Text == "Введите ваш заработок")
+            {
+                incomeTextBox.Text = "";
+            }
+        }
+
+        private void IncomeTextBox_Leave(object sender, EventArgs e)
+        {
+            // Обработчик события выхода из текстового поля "Заработок"
+
+            if (incomeTextBox.Text == "")
+            {
+                incomeTextBox.Text = "Введите ваш заработок";
+            }
         }
     }
-
 }
+        
+    
+
+
 
