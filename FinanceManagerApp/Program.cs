@@ -1,96 +1,97 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
 
-namespace FinanceTrackerWithInterface
+namespace FinanceTrackerWithInterfaces
 {
-    public interface ITransaction // интерфейс для транзакции
+    // Интерфейсы
+    public interface ITransaction
     {
-        string Category { get; } // свойство для категории
-        double Amount { get; } // свойство для суммы
+        string Category { get; }
+        double Amount { get; }
     }
 
-    public interface ITransactionCategory // интерфейс для категорий транзакций
+    public interface ITransactionCategory
     {
-        void addCategory(string category); // метод для добавления категории
-        List<string> getCategories(); // метод для получения списка категорий
+        void AddCategory(string category);
+        List<string> GetCategories();
     }
 
-    public interface INotification // интерфейс для уведомлений
+    public interface INotification
     {
-        void showNotification(string message); // метод для показа уведомления
+        void ShowNotification(string message);
     }
 
-    public class FinanceTracker : ITransaction, ITransactionCategory, INotification
+    public interface IFinanceTracker : ITransactionCategory, INotification
     {
-        private double income = 0; // общий доход от транзакций
-        private List<ITransaction> transactions = new List<ITransaction>(); // список транзакций
-        private List<string> categories = new List<string>(); // список категорий
+        void SetIncome(double newIncome);
+        void AddTransaction(string category, double amount);
+        double CalculateTotal();
+        List<ITransaction> GetTransactions();
+        double GetIncome();
+    }
 
-        // Реализация свойства Category из интерфейса ITransaction
-        public string Category { get; private set; }
+    // Реализация финансового трекера
+    public class FinanceTracker : IFinanceTracker
+    {
+        private double income = 0;
+        private readonly List<ITransaction> transactions = new List<ITransaction>();
+        private readonly List<string> categories = new List<string>();
 
-        // Реализация свойства Amount из интерфейса ITransaction
-        public double Amount { get; private set; }
-
-        public void setIncome(double newIncome)
+        public void SetIncome(double newIncome)
         {
-            income = newIncome; // установить новый доход
+            income = newIncome;
         }
 
-        public void addTransaction(string category, double amount)
+        public void AddTransaction(string category, double amount)
         {
-            double totalSpent = calculateTotal();
+            double totalSpent = CalculateTotal();
             if (totalSpent + amount > income)
             {
-                showNotification("Сумма транзакции не может превышать доход");
+                ShowNotification("Сумма транзакции не может превышать доход");
                 return;
             }
             transactions.Add(new Transaction(category, amount));
         }
 
-        public double calculateTotal()
+        public double CalculateTotal()
         {
-            double total = 0;
-            foreach (var transaction in transactions)
-            {
-                total += transaction.Amount;
-            }
-            return total;
+            return transactions.Sum(t => t.Amount);
         }
 
-        public List<ITransaction> getTransactions()
+        public List<ITransaction> GetTransactions()
         {
             return transactions;
         }
 
-        public double getIncome()
+        public double GetIncome()
         {
             return income;
         }
 
-        public void addCategory(string category)
+        public void AddCategory(string category)
         {
-            if (category != "Общие" && category != "Одиночные")
+            if (!categories.Contains(category))
             {
                 categories.Add(category);
             }
         }
 
-        public List<string> getCategories()
+        public List<string> GetCategories()
         {
             return categories;
         }
 
-        public void showNotification(string message)
+        public void ShowNotification(string message)
         {
             MessageBox.Show(message, "Уведомление", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private class Transaction : ITransaction
         {
-            public string Category { get; } // реализация свойства Category
-            public double Amount { get; } // реализация свойства Amount
+            public string Category { get; }
+            public double Amount { get; }
 
             public Transaction(string category, double amount)
             {
@@ -99,6 +100,293 @@ namespace FinanceTrackerWithInterface
             }
         }
     }
+
+    // Главное окно приложения
+    public class MainForm : Form
+    {
+        private readonly IFinanceTracker financeTracker;
+        private ComboBox categoryComboBox;
+        private TextBox amountTextBox;
+        private TextBox incomeTextBox;
+        private Button addTransactionButton;
+        private Button updateTotalButton;
+        private ListBox transactionListBox;
+        private Label totalLabel;
+        private Button showSummaryButton;
+        private Button showTableButton;
+        private Form summaryForm;
+        private Form tableForm;
+
+        public MainForm(IFinanceTracker tracker)
+        {
+            financeTracker = tracker;
+            InitializeComponent();
+        }
+
+        private void InitializeComponent()
+        {
+            Text = "Финансовый трекер";
+            Size = new System.Drawing.Size(420, 500);
+
+            Label incomeLabel = new Label
+            {
+                Text = "Доход:",
+                Location = new System.Drawing.Point(10, 10),
+                Size = new System.Drawing.Size(80, 25)
+            };
+            Controls.Add(incomeLabel);
+
+            incomeTextBox = new TextBox
+            {
+                Location = new System.Drawing.Point(100, 10),
+                Size = new System.Drawing.Size(100, 25)
+            };
+            Controls.Add(incomeTextBox);
+
+            Button setIncomeButton = new Button
+            {
+                Text = "Установить доход",
+                Location = new System.Drawing.Point(210, 10),
+                Size = new System.Drawing.Size(150, 30)
+            };
+            setIncomeButton.Click += SetIncomeButton_Click;
+            Controls.Add(setIncomeButton);
+
+            Label categoryLabel = new Label
+            {
+                Text = "Категория:",
+                Location = new System.Drawing.Point(10, 50),
+                Size = new System.Drawing.Size(80, 25)
+            };
+            Controls.Add(categoryLabel);
+
+            categoryComboBox = new ComboBox
+            {
+                Location = new System.Drawing.Point(100, 50),
+                Size = new System.Drawing.Size(150, 25),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            categoryComboBox.Items.AddRange(new string[] { "Развлечения", "Еда", "Транспорт", "Одежда", "Жилье", "Здоровье", "Образование", "Прочее" });
+            Controls.Add(categoryComboBox);
+
+            Label amountLabel = new Label
+            {
+                Text = "Сумма:",
+                Location = new System.Drawing.Point(10, 90),
+                Size = new System.Drawing.Size(80, 25)
+            };
+            Controls.Add(amountLabel);
+
+            amountTextBox = new TextBox
+            {
+                Location = new System.Drawing.Point(100, 90),
+                Size = new System.Drawing.Size(100, 25)
+            };
+            Controls.Add(amountTextBox);
+
+            addTransactionButton = new Button
+            {
+                Text = "Добавить транзакцию",
+                Location = new System.Drawing.Point(210, 90),
+                Size = new System.Drawing.Size(150, 30)
+            };
+            addTransactionButton.Click += AddTransactionButton_Click;
+            Controls.Add(addTransactionButton);
+
+            updateTotalButton = new Button
+            {
+                Text = "Обновить общую сумму",
+                Location = new System.Drawing.Point(10, 130),
+                Size = new System.Drawing.Size(200, 30)
+            };
+            updateTotalButton.Click += UpdateTotalButton_Click;
+            Controls.Add(updateTotalButton);
+
+            showSummaryButton = new Button
+            {
+                Text = "Показать сводку",
+                Location = new System.Drawing.Point(220, 130),
+                Size = new System.Drawing.Size(150, 30)
+            };
+            showSummaryButton.Click += ShowSummaryButton_Click;
+            Controls.Add(showSummaryButton);
+
+            showTableButton = new Button
+            {
+                Text = "Показать таблицу",
+                Location = new System.Drawing.Point(10, 170),
+                Size = new System.Drawing.Size(200, 30)
+            };
+            showTableButton.Click += ShowTableButton_Click;
+            Controls.Add(showTableButton);
+
+            transactionListBox = new ListBox
+            {
+                Location = new System.Drawing.Point(10, 210),
+                Size = new System.Drawing.Size(360, 200)
+            };
+            Controls.Add(transactionListBox);
+
+            totalLabel = new Label
+            {
+                Location = new System.Drawing.Point(10, 420),
+                Size = new System.Drawing.Size(360, 30),
+                Text = $"Общая сумма потраченных денег: {financeTracker.CalculateTotal()}",
+                TextAlign = System.Drawing.ContentAlignment.MiddleCenter
+            };
+            Controls.Add(totalLabel);
+        }
+
+        private void SetIncomeButton_Click(object sender, EventArgs e)
+        {
+            if (double.TryParse(incomeTextBox.Text, out double income))
+            {
+                financeTracker.SetIncome(income);
+                MessageBox.Show("Доход успешно установлен!", "Уведомление", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            else
+            {
+                MessageBox.Show("Пожалуйста, введите корректную сумму дохода.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void AddTransactionButton_Click(object sender, EventArgs e)
+        {
+            if (categoryComboBox.SelectedItem == null)
+            {
+                MessageBox.Show("Пожалуйста, выберите категорию.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (!double.TryParse(amountTextBox.Text, out double amount))
+            {
+                MessageBox.Show("Пожалуйста, введите корректную сумму транзакции.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            string category = categoryComboBox.SelectedItem.ToString();
+            financeTracker.AddTransaction(category, amount);
+
+            UpdateTransactionsListBox();
+            totalLabel.Text = $"Общая сумма потраченных денег: {financeTracker.CalculateTotal()}";
+        }
+
+        private void UpdateTotalButton_Click(object sender, EventArgs e)
+        {
+            totalLabel.Text = $"Общая сумма потраченных денег: {financeTracker.CalculateTotal()}";
+        }
+
+        private void ShowSummaryButton_Click(object sender, EventArgs e)
+        {
+            if (summaryForm == null)
+            {
+                summaryForm = new SummaryForm(financeTracker);
+                summaryForm.FormClosed += (s, args) => summaryForm = null;
+                summaryForm.Show();
+            }
+            else
+            {
+                summaryForm.BringToFront();
+            }
+        }
+
+        private void ShowTableButton_Click(object sender, EventArgs e)
+        {
+            if (tableForm == null)
+            {
+                tableForm = new TableForm(financeTracker);
+                tableForm.FormClosed += (s, args) => tableForm = null;
+                tableForm.Show();
+            }
+            else
+            {
+                tableForm.BringToFront();
+            }
+        }
+
+        private void UpdateTransactionsListBox()
+        {
+            transactionListBox.Items.Clear();
+            foreach (var transaction in financeTracker.GetTransactions())
+            {
+                transactionListBox.Items.Add($"Категория: {transaction.Category}, Сумма: {transaction.Amount}");
+            }
+        }
+    }
+
+    // Окно сводки
+    public class SummaryForm : Form
+    {
+        private readonly IFinanceTracker financeTracker;
+
+        public SummaryForm(IFinanceTracker tracker)
+        {
+            financeTracker = tracker;
+            InitializeComponent();
+        }
+
+        private void InitializeComponent()
+        {
+            Text = "Сводка транзакций";
+            Size = new System.Drawing.Size(400, 300);
+
+            Label summaryLabel = new Label
+            {
+                Text = "Сводка:",
+                Location = new System.Drawing.Point(10, 10),
+                Size = new System.Drawing.Size(80, 25)
+            };
+            Controls.Add(summaryLabel);
+
+            Label incomeLabel = new Label
+            {
+                Text = $"Общий доход: {financeTracker.GetIncome()}",
+                Location = new System.Drawing.Point(10, 50),
+                Size = new System.Drawing.Size(200, 25)
+            };
+            Controls.Add(incomeLabel);
+
+            Label spentLabel = new Label
+            {
+                Text = $"Общие расходы: {financeTracker.CalculateTotal()}",
+                Location = new System.Drawing.Point(10, 90),
+                Size = new System.Drawing.Size(200, 25)
+            };
+            Controls.Add(spentLabel);
+        }
+    }
+
+    // Окно таблицы транзакций
+    public class TableForm : Form
+    {
+        private readonly IFinanceTracker financeTracker;
+
+        public TableForm(IFinanceTracker tracker)
+        {
+            financeTracker = tracker;
+            InitializeComponent();
+        }
+
+        private void InitializeComponent()
+        {
+            Text = "Таблица транзакций";
+            Size = new System.Drawing.Size(400, 300);
+
+            ListBox transactionListBox = new ListBox
+            {
+                Location = new System.Drawing.Point(10, 10),
+                Size = new System.Drawing.Size(360, 240)
+            };
+            Controls.Add(transactionListBox);
+
+            foreach (var transaction in financeTracker.GetTransactions())
+            {
+                transactionListBox.Items.Add($"Категория: {transaction.Category}, Сумма: {transaction.Amount}");
+            }
+        }
+    }
+
+    // Точка входа
     public static class Program
     {
         [STAThread]
@@ -106,152 +394,7 @@ namespace FinanceTrackerWithInterface
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MainForm());
-        }
-    }
-    public class MainForm : Form
-    {
-        private readonly FinanceTracker financeTracker = new FinanceTracker();
-        private ComboBox categoryComboBox;
-        private TextBox amountTextBox;
-        private TextBox incomeTextBox;
-        private Button addTransactionButton;
-        private ListBox transactionListBox;
-        private Label totalLabel;
-
-        public MainForm()
-        {
-            InitializeComponent();
-        }
-        private void InitializeComponent()
-        {
-            Text = "Отслеживание финансов";
-            Size = new System.Drawing.Size(400, 400);
-
-            // Создание и настройка элементов управления
-
-            // ComboBox для выбора категории транзакции
-            categoryComboBox = new ComboBox
-            {
-                Location = new System.Drawing.Point(10, 10),
-                Size = new System.Drawing.Size(200, 25),
-                DropDownStyle = ComboBoxStyle.DropDownList // чтобы пользователь мог выбирать только из списка
-            };
-            // Добавление категорий по умолчанию
-            categoryComboBox.Items.AddRange(new string[] { "Развлечения", "Еда", "Транспорт", "Одежда", "Жилье", "Здоровье", "Образование", "Прочее" });
-            Controls.Add(categoryComboBox);
-
-            // TextBox для ввода суммы транзакции
-            amountTextBox = new TextBox
-            {
-                Location = new System.Drawing.Point(10, 45),
-                Size = new System.Drawing.Size(200, 25)
-            };
-            Controls.Add(amountTextBox);
-
-            // TextBox для ввода заработка
-            incomeTextBox = new TextBox
-            {
-                Location = new System.Drawing.Point(10, 80),
-                Size = new System.Drawing.Size(200, 25),
-                Text = "Введите ваш заработок"
-            };
-            incomeTextBox.Enter += IncomeTextBox_Enter; // Добавляем обработчик события входа в текстовое поле
-            incomeTextBox.Leave += IncomeTextBox_Leave; // Добавляем обработчик события выхода из текстового поля
-            Controls.Add(incomeTextBox);
-
-            // Button для добавления транзакции
-            addTransactionButton = new Button
-            {
-                Location = new System.Drawing.Point(10, 120),
-                Size = new System.Drawing.Size(200, 25),
-                Text = "Добавить транзакцию"
-            };
-            addTransactionButton.Click += AddTransactionButton_Click; // добавляем обработчик события нажатия кнопки
-            Controls.Add(addTransactionButton);
-
-            // ListBox для отображения списка транзакций
-            transactionListBox = new ListBox
-            {
-                Location = new System.Drawing.Point(10, 160),
-                Size = new System.Drawing.Size(350, 200)
-            };
-            Controls.Add(transactionListBox);
-
-            // Label для отображения общей суммы потраченных денег
-            totalLabel = new Label
-            {
-                Location = new System.Drawing.Point(10, 370),
-                Size = new System.Drawing.Size(350, 20),
-                Text = $"Общая сумма потраченных денег: {financeTracker.calculateTotal()}",
-                TextAlign = System.Drawing.ContentAlignment.MiddleCenter
-            };
-            Controls.Add(totalLabel);
-        }
-
-        private void AddTransactionButton_Click(object sender, EventArgs e)
-        {
-            // Обработчик события нажатия кнопки "Добавить транзакцию"
-
-            // Получаем выбранную категорию и введенную сумму
-            string category = categoryComboBox.SelectedItem.ToString();
-            double amount = 0;
-            if (!double.TryParse(amountTextBox.Text, out amount))
-            {
-                MessageBox.Show("Пожалуйста, введите корректную сумму.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-
-            // Получаем введенный заработок
-            double income = 0;
-            if (!double.TryParse(incomeTextBox.Text, out income))
-            {
-                MessageBox.Show("Пожалуйста, введите корректный заработок.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            financeTracker.setIncome(income); // Установить введенный заработок
-
-            // Добавляем транзакцию
-            financeTracker.addTransaction(category, amount);
-
-            // Обновляем список транзакций и общую сумму потраченных денег
-            UpdateTransactionsListBox();
-            totalLabel.Text = $"Общая сумма потраченных денег: {financeTracker.calculateTotal()}";
-        }
-
-        private void UpdateTransactionsListBox()
-        {
-            // Очищаем список транзакций и добавляем новые элементы
-            transactionListBox.Items.Clear();
-            foreach (var transaction in financeTracker.getTransactions())
-            {
-                transactionListBox.Items.Add($"Категория: {transaction.Category}, Сумма: {transaction.Amount}");
-            }
-        }
-
-        private void IncomeTextBox_Enter(object sender, EventArgs e)
-        {
-            // Обработчик события входа в текстовое поле "Заработок"
-
-            if (incomeTextBox.Text == "Введите ваш заработок")
-            {
-                incomeTextBox.Text = "";
-            }
-        }
-
-        private void IncomeTextBox_Leave(object sender, EventArgs e)
-        {
-            // Обработчик события выхода из текстового поля "Заработок"
-
-            if (incomeTextBox.Text == "")
-            {
-                incomeTextBox.Text = "Введите ваш заработок";
-            }
+            Application.Run(new MainForm(new FinanceTracker()));
         }
     }
 }
-        
-    
-
-
-
